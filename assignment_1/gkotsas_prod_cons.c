@@ -26,7 +26,7 @@
 #define pro_threads 100
 #define con_threads 50
 #define MAX_QUEUE_SIZE 100
-#define MAX_LOOPS 100
+#define MAX_LOOPS 80000
 
 using namespace std; 
 
@@ -40,7 +40,9 @@ queue<int> Q;
 int sum = 0;
 int consumerCount = 0;
 
-struct timeval t1, t2;
+struct timeval t1, t2, start_program, end_program;
+
+
 int elapsedTime[MAX_LOOPS*pro_threads];
 
 // Getting the mutex 
@@ -51,7 +53,11 @@ pthread_cond_t  dataNotConsumed = PTHREAD_COND_INITIALIZER;
 
 int main ()
 {
+  double total_elapsed_time = 0;  
+  gettimeofday(&start_program, NULL);
   
+  double mean_elapsed_time = 0;
+    
   pthread_t pro[pro_threads], con[con_threads];
     
   
@@ -74,13 +80,20 @@ int main ()
         pthread_join (con[x], NULL);
   }
   
-  cout << "Wow, you made it to the end sailor! Congrats." << endl;
+  cout << "\nWow, you made it to the end sailor! Congrats.\n" << endl;
   
-  cout << "Let me now print you the elapsed times" << endl;
+  gettimeofday(&end_program, NULL);
+  total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
+  total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
+  
+  cout << "Total program elapsed time is: " << total_elapsed_time << " ms\n" << endl;
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
-      cout << "Time interval #" << x << ": " << elapsedTime[x] << endl;
-
+      mean_elapsed_time += elapsedTime[x];
+      
+  mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
+  
+  cout << "The mean value of the elapsed time between a producer thread and a consumer one is: " << mean_elapsed_time << " us\n" << endl;
   return 0;
 }
 
@@ -105,7 +118,8 @@ void *producer (void *q)
         
         // Starting the timer
         gettimeofday(&t1, NULL);
-        printf(t1.tv_sec);
+        
+        cout << t1.tv_sec << endl;
         
         producerCount++;
         
@@ -151,7 +165,7 @@ void *consumer (void *q)
         gettimeofday(&t2, NULL);
         
         // Saving the elapsedTime in an array
-        elapsedTime[MAX_LOOPS*pro_threads-1] =  (t2.tv_usec - t1.tv_usec); // sec to ms
+        elapsedTime[consumerCount]   =  (t2.tv_usec - t1.tv_usec); // sec to ms
         
         cout << "Hey, I'm Consumer-" << pthread_self() << ". I'm using the function: " << data << endl;
         
