@@ -1,4 +1,4 @@
-/*
+ /*
  *	File	: pc.c
  *
  *	Title	: Demo Producer/Consumer.
@@ -21,7 +21,10 @@
 #include <stdlib.h>
 #include <iostream> 
 #include <queue>
+#include <math.h>
 #include <sys/time.h>
+
+#define PI 3.141592654
 
 #define pro_threads 100
 #define con_threads 50
@@ -50,6 +53,24 @@ pthread_mutex_t mutex           = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t  dataNotProduced = PTHREAD_COND_INITIALIZER; 
 pthread_cond_t  dataNotConsumed = PTHREAD_COND_INITIALIZER; 
+
+double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3};
+
+typedef struct{
+  void * (*work)(void *);
+  void * arg;
+} workFunction ;
+
+/* WORK FUNCTIONS BEGIN HERE */ 
+
+void *work_execution(void *arg)
+ {
+     
+    double output = cos(*(int*)arg);
+    
+    printf("Value of Output is: %f\n", output);
+    
+ }
 
 int main ()
 {
@@ -101,20 +122,23 @@ void *producer (void *q)
 {
   static int producerCount = 0;  
 
-  
-
   while(1) {
       
     pthread_mutex_lock (&mutex); // Locking queue with mutex
     
     if (Q.size() < MAX_QUEUE_SIZE && producerCount < MAX_LOOPS*pro_threads)
     {
-        // Generating a random number from 0~9 to be used in function selection
-        int num = rand()%9;
-        cout << "Producer with id(" << pthread_self() << "): Function " << num << " has been selected" << endl;
+        workFunction *producerExecution;
+        
+        // Generating a random number from 0~9 for angle selection
+        producerExecution->arg  = &angles[rand()%9];
+        producerExecution->work = &work_execution;
+        
+        cout << "Producer with id(" << pthread_self() << "): Angle " << producerExecution.arg << " has been selected" << endl;
         
         // Pushing the number into queue
-        Q.push(num);
+        Q.push(producerExecution);
+        
         
         // Starting the timer
         gettimeofday(&t1, NULL);
@@ -153,13 +177,17 @@ void *consumer (void *q)
     
 
   while(1) {
+    
+    workFunction functionExecuter; // Creating a struct of type workFunction
       
     pthread_mutex_lock (&mutex);
     
     if(Q.size() > 0 && consumerCount < MAX_LOOPS*pro_threads)
     {
+        
+        
         // Get the data from the front of the queue
-        int data = Q.front();
+        functionExecuter = Q.front();
         
         // Stopping the timer
         gettimeofday(&t2, NULL);
@@ -170,8 +198,7 @@ void *consumer (void *q)
         cout << "Hey, I'm Consumer-" << pthread_self() << ". I'm using the function: " << data << endl;
         
         // Selecting the right function
-        // At this stage, we just sum the data and integrate the extra functions later.
-        sum += data;
+        functionExecuter.work(functionExecuter.arg);
         
         // Pop the consumed data from the queue 
         Q.pop();
@@ -198,3 +225,10 @@ void *consumer (void *q)
     pthread_mutex_unlock(&mutex);
   }
 }
+
+
+
+
+
+ 
+ 
