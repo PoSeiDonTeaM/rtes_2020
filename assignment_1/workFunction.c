@@ -103,6 +103,7 @@ void *producer (void *q)
     pthread_cond_signal (fifo->notEmpty);
     usleep (100000);
   }
+  
   for (i = 0; i < LOOP; i++) {
     pthread_mutex_lock (fifo->mut);
     while (fifo->full) {

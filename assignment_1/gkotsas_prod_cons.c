@@ -21,10 +21,12 @@
 #include <stdlib.h>
 #include <iostream> 
 #include <queue>
+#include <sys/time.h>
 
-#define pro_threads 5
-#define con_threads 4
-#define MAX 100
+#define pro_threads 600
+#define con_threads 33
+#define MAX_QUEUE_SIZE 10
+#define MAX_LOOPS 100
 
 using namespace std; 
 
@@ -37,9 +39,6 @@ queue<int> Q;
 
 int sum = 0;
 int consumerCount = 0;
-
-int producersArray[pro_threads];
-int consumersArray[con_threads];
 
 // Getting the mutex 
 pthread_mutex_t mutex           = PTHREAD_MUTEX_INITIALIZER; 
@@ -86,7 +85,7 @@ void *producer (void *q)
       
     pthread_mutex_lock (&mutex); // Locking queue with mutex
     
-    if (Q.size() < MAX && producerCount < MAX)
+    if (Q.size() < MAX_QUEUE_SIZE && producerCount < MAX_LOOPS)
     {
         // Generating a random number from 0~9 to be used in function selection
         int num = rand()%9;
@@ -101,7 +100,7 @@ void *producer (void *q)
     }
     
     // If queue is full release mutex and break the loop
-    else if (producerCount == MAX)
+    else if (producerCount == MAX_LOOPS)
     {
         pthread_mutex_unlock(&mutex);
         return NULL;
@@ -109,12 +108,14 @@ void *producer (void *q)
     
     // If another thread is executing, then wait.
     else{
-        cout << "Hold on there cowboy, another thread is executing..." << endl;
+        cout << "Producer: Hold on there cowboy, another thread is executing..." << endl;
         pthread_cond_wait(&dataNotConsumed, &mutex);
     }
     
     // Unlock the mutex
     pthread_mutex_unlock(&mutex);
+    
+    usleep(10000);
 
   }
 }
@@ -146,7 +147,7 @@ void *consumer (void *q)
     }
     
     // Check if consumers have consumed all the threads that have been produced
-    else if(consumerCount == MAX)
+    else if(consumerCount == MAX_LOOPS)
     {
         pthread_mutex_unlock(&mutex);
         return NULL;
@@ -154,7 +155,7 @@ void *consumer (void *q)
     
     // If another thread is executing, then wait.
     else{
-        cout << "Hold on there cowboy, another thread is executing..." << endl;
+        cout << "Consumer: Hold on there cowboy, another thread is executing..." << endl;
         pthread_cond_wait(&dataNotConsumed, &mutex);
     }
     
