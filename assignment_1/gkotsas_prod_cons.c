@@ -51,11 +51,9 @@ pthread_cond_t  dataNotConsumed = PTHREAD_COND_INITIALIZER;
 
 int main ()
 {
-    
-  
   
   pthread_t pro[pro_threads], con[con_threads];
-
+    
   
   /*       Create producer and consumer threads      */
   
@@ -107,6 +105,7 @@ void *producer (void *q)
         
         // Starting the timer
         gettimeofday(&t1, NULL);
+        printf(t1.tv_sec);
         
         producerCount++;
         
