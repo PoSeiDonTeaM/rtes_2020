@@ -113,20 +113,20 @@ int main ()
   
   queueDelete (fifo);
   
-  printf("\nWow, you made it to the end sailor! Congrats.\n");
+  printf("\nWow, you made it to the end sailor! Congrats.\n\n");
   
   gettimeofday(&end_program, NULL);
   total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
   total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
   
-  printf("Total program elapsed time is: %f ms", total_elapsed_time);
+  printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
       mean_elapsed_time += elapsedTime[x];
   
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
-  printf("The mean value of the elapsed time between a producer thread and a consumer one is: %f", mean_elapsed_time);
+  printf("The mean value of the elapsed time between a producer thread and a consumer one is: %f\n\n", mean_elapsed_time);
 
   return 0;
 }
@@ -140,12 +140,11 @@ void *producer (void *q)
 
   for (i = 0; i < MAX_LOOPS; i++)
   {
-    printf("Hey");  
     
     pthread_mutex_lock (fifo->mut);
     
     while (fifo->full) {
-      printf ("Producer: Hold on there cowboy, another thread is executing...\n");
+      printf ("Producer: Hold on there cowboy, another thread is executing...\n\n");
       pthread_cond_wait (fifo->notFull, fifo->mut);
     }
     
@@ -195,45 +194,51 @@ void *consumer (void *q)
       
     pthread_mutex_lock (fifo->mut);
     
-        while (fifo->empty) 
+        
+    
+    if(fifo->empty!=1 && consumerCount < MAX_LOOPS*pro_threads)
+    {
+        queueDel (fifo, &functionExecuter);
+    
+        pthread_mutex_unlock (fifo->mut);
+        pthread_cond_signal (fifo->notFull);
+    
+        printf("ConsumerCount is: %d",consumerCount);
+        
+        pthread_mutex_lock(fifo -> mut);
+    
+        // Stopping the timer
+        gettimeofday(&t2, NULL);
+        
+        // Saving the elapsedTime in an array
+        elapsedTime[consumerCount]   =  (t2.tv_usec - t1.tv_usec); // sec to ms
+        
+        printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
+
+        // Running the workFunction!
+        functionExecuter.work(functionExecuter.arg);
+        
+        consumerCount++;
+    }
+    else if(consumerCount == MAX_LOOPS*pro_threads)
+    {
+        pthread_mutex_unlock(fifo -> mut);
+        break;
+    }
+    
+    else if (fifo->empty) 
         {
-            printf ("consumer: queue EMPTY.\n");
+            printf ("consumer: queue EMPTY.\n\n");
             pthread_cond_wait (fifo->notEmpty, fifo->mut);
         }
     
-    if(fifo->empty!=1 && consumerCount < MAX_LOOPS*pro_threads)
-        queueDel (fifo, &functionExecuter);
-    
-    pthread_mutex_unlock (fifo->mut);
-    pthread_cond_signal (fifo->notFull);
-    
-    printf(consumerCount);
-    
-    if(consumerCount == MAX_LOOPS*pro_threads-1)
-        printf("consumerCount almost reached");
-    
-    if(consumerCount == MAX_LOOPS*pro_threads)
-        break;
-    
-    pthread_mutex_lock(fifo -> mut);
-    
-    // Stopping the timer
-    gettimeofday(&t2, NULL);
-    
-    // Saving the elapsedTime in an array
-    elapsedTime[consumerCount]   =  (t2.tv_usec - t1.tv_usec); // sec to ms
-    
-    printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f", pthread_self(), *(double*)functionExecuter.arg);
 
-    // Running the workFunction!
-    functionExecuter.work(functionExecuter.arg);
-    
     // Unlocking the mutex
     pthread_mutex_unlock(fifo -> mut);
     //usleep(200000);
   }
   
-  consumerCount++;
+  
  
   //pthread_mutex_lock(fifo->mut);
   //queueReduceConsumers(fifo);
