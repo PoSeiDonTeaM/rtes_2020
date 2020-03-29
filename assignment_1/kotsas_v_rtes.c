@@ -24,6 +24,8 @@
 #include <math.h>
 #include <sys/time.h>
 
+#define PI 3.141592654
+
 #define QUEUESIZE 50
 #define pro_threads 100
 #define con_threads 50
@@ -37,8 +39,11 @@ void *consumer (void *args);
 struct timeval t1, t2, start_program, end_program;
 
 int elapsedTime[MAX_LOOPS*pro_threads];
+int consumerCount = 0;
 
-double *angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3};
+double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3};
+
+// int *angles_ptr = angles;
 
 typedef struct {
   void * (*work)(void *);
@@ -58,9 +63,18 @@ queue *queueInit (void);
 void queueDelete (queue *q);
 void queueAdd (queue *q, workFunction *in);
 void queueDel (queue *q, workFunction *out);
-void queueReduceProducers(queue *q);
-void queueReduceConsumers(queue *q);
+//void queueReduceProducers(queue *q);
+//void queueReduceConsumers(queue *q);
 void * my_function(void *arg); 
+
+void *work_execution(void *arg)
+ {
+     
+    double output = cos(*(int*)arg);
+    
+    printf("Value of Output is: %f\n", output);
+    
+ }
 
 int main ()
 {
@@ -94,14 +108,10 @@ int main ()
         pthread_create (&con[x], NULL, consumer, NULL);
         
   for (int x=0; x<pro_threads; x++)
-  {
         pthread_join (pro[x], NULL);
-  }  
-      
+
   for (int x=0; x<con_threads; x++)
-  {
         pthread_join (con[x], NULL);
-  }
   
   queueDelete (fifo);
   
@@ -111,14 +121,14 @@ int main ()
   total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
   total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
   
-  printf("Total program elapsed time is: %d ms", total_elapsed_time);
+  printf("Total program elapsed time is: %f ms", total_elapsed_time);
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
       mean_elapsed_time += elapsedTime[x];
   
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
-  printf("The mean value of the elapsed time between a producer thread and a consumer one is: %d", mean_elapsed_time);
+  printf("The mean value of the elapsed time between a producer thread and a consumer one is: %f", mean_elapsed_time);
 
   return 0;
 }
@@ -136,24 +146,27 @@ void *producer (void *q)
     pthread_mutex_lock (fifo->mut);
     
     while (fifo->full) {
-      printf ("Producer: Hold on there cowboy, another thread is executing..."\n");
+      printf ("Producer: Hold on there cowboy, another thread is executing...\n");
       pthread_cond_wait (fifo->notFull, fifo->mut);
     }
     
     workFunction *producerExecution;
     
-    long int *x;
-    x= (long int *)malloc(sizeof(long int));
+    double *x;
+    
+    x= (double *)malloc(sizeof(double));
     producerExecution = (workFunction *)malloc(sizeof(workFunction));
     
-    producerExecution->arg  = (void *)angles[rand()%9];
-    producerExecution->work = &work_execution;
+    x = &angles[rand()%9];
+    
+    producerExecution->arg  = (void *) x;  // Passing the address of x to arg with typecast void
+    
+    producerExecution->work = &work_execution; // Passing the address of the function work_execution
     
     // Starting the timer
     gettimeofday(&t1, NULL);
     
-    *x = tv.tv_usec+tv.tv_sec*1000000;
-    producerExecution->arg = (void *) x;
+    // Adding the struct producerExecution to queue
     
     queueAdd (fifo,producerExecution);
     pthread_mutex_unlock (fifo->mut);
@@ -162,7 +175,9 @@ void *producer (void *q)
   }
 
   pthread_mutex_lock(fifo->mut);
-  queueReduceProducers(fifo);
+  //queueReduceProducers(fifo);
+  
+  // Unlock the mutex, broadcast that producer added an element
   pthread_mutex_unlock(fifo->mut);
   pthread_cond_broadcast (fifo->notEmpty);
   return (NULL);
@@ -170,60 +185,59 @@ void *producer (void *q)
 
 void *consumer (void *q)
 {
+    
   queue *fifo;
   int i;
-  workFunction d;
+  
+  workFunction functionExecuter;
 
   fifo = (queue *)q;
 
   while(1) {
+      
     pthread_mutex_lock (fifo->mut);
-    while (fifo->empty && fifo->num_prods>0) {
-      printf ("consumer: queue EMPTY.\n");
-      pthread_cond_wait (fifo->notEmpty, fifo->mut);
-    }
-    if(fifo->empty!=1 )queueDel (fifo, &d);
+    
+        while (fifo->empty) 
+        {
+            printf ("consumer: queue EMPTY.\n");
+            pthread_cond_wait (fifo->notEmpty, fifo->mut);
+        }
+    
+    if(fifo->empty!=1 && consumerCount < MAX_LOOPS*pro_threads)
+        queueDel (fifo, &functionExecuter);
+    
     pthread_mutex_unlock (fifo->mut);
     pthread_cond_signal (fifo->notFull);
-    if(fifo->num_prods==0 )break;
-    printf ("consumer: recieved %ld.\n", *(long int*)d.arg);
+    
+    if(consumerCount == MAX_LOOPS*pro_threads)
+        break;
+    
     pthread_mutex_lock(fifo -> mut);
-    struct timeval tv_con;
-    gettimeofday(&tv_con , NULL);
-    long int temp;
-    temp = tv_con.tv_sec*1000000 + tv_con.tv_usec;
-    *(long int*)d.arg = temp - *(long int *)d.arg;
-    d.work(d.arg);
+    
+    // Stopping the timer
+    gettimeofday(&t2, NULL);
+    
+    // Saving the elapsedTime in an array
+    elapsedTime[consumerCount]   =  (t2.tv_usec - t1.tv_usec); // sec to ms
+    
+    printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f", pthread_self(), *(double*)functionExecuter.arg);
+
+    // Running the workFunction!
+    functionExecuter.work(functionExecuter.arg);
+    
+    // Unlocking the mutex
     pthread_mutex_unlock(fifo -> mut);
     //usleep(200000);
   }
-  /*for (i = 0; i < MAX_LOOPS; i++) {
-    pthread_mutex_lock (fifo->mut);
-    while (fifo->empty) {
-      printf ("consumer: queue EMPTY.\n");
-      pthread_cond_wait (fifo->notEmpty, fifo->mut);
-    }
-    queueDel (fifo, &d);
-    pthread_mutex_unlock (fifo->mut);
-    pthread_cond_signal (fifo->notFull);
-    printf ("consumer: recieved %d.\n", d);
-    usleep (50000);
-  }*/
-  pthread_mutex_lock(fifo->mut);
-  queueReduceConsumers(fifo);
-  pthread_mutex_unlock(fifo->mut);
+  
+  consumerCount++;
+ 
+  //pthread_mutex_lock(fifo->mut);
+  //queueReduceConsumers(fifo);
+  //pthread_mutex_unlock(fifo->mut);
+  
   return (NULL);
 }
-
-/*
-  typedef struct {
-  int buf[QUEUESIZE];
-  long head, tail;
-  int full, empty;
-  pthread_mutex_t *mut;
-  pthread_cond_t *notFull, *notEmpty;
-  } queue;
-*/
 
 queue *queueInit (void)
 {
@@ -232,8 +246,6 @@ queue *queueInit (void)
   q = (queue *)malloc (sizeof (queue));
   if (q == NULL) return (NULL);
 
-  q->num_prods = PRODUCERS;
-  q->num_cons  = CONSUMERS;
   q->empty = 1;
   q->full = 0;
   q->head = 0;
@@ -285,24 +297,8 @@ void queueDel (queue *q, workFunction *out)
 
   return;
 }
-void queueReduceProducers(queue *q){
-  q->num_prods =  q->num_prods - 1;
-  printf("THERE ARE NOW  %d producers \n",q->num_prods);
-}
-void queueReduceConsumers(queue *q){
-  q->num_cons =  q->num_cons - 1;
-  printf("THERE ARE NOW %d consumers \n",q->num_cons);
-}
 
-void work_execution(void *arg)
- {
-     
-    double output = cos(*(int*)arg);
-    
-    printf("Value of Output is: %f\n", output);
-    
- }
-
+ /*
 void * my_function(void *arg){
   long int k = *(long int *)arg;  
   int error;
@@ -312,3 +308,4 @@ void * my_function(void *arg){
   fprintf(fp, "%ld\n", k);
   fclose(fp);
 }
+*/
