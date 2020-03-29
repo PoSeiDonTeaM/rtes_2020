@@ -232,8 +232,7 @@ void *consumer (void *q)
         gettimeofday(&t2, NULL);
         
         //Saving the elapsedTime in an array
-        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 - elapsedTime[consumerCount]); // sec to us
-        elapsedTime[consumerCount]   +=  (t2.tv_usec - elapsedTime[consumerCount]);       
+        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 + t2.tv_usec - elapsedTime[consumerCount]); // sec to us
         
         printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
 
