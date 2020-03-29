@@ -92,67 +92,68 @@ void createCSV (char *filename, double long elapsedTime[])
  
 int main ()
 {
-  queue *fifo;
   
-  double total_elapsed_time = 0;  
-  gettimeofday(&start_program, NULL);
-  
-  double mean_elapsed_time = 0;
-  
-  char filename[24] = "Outputs_v1";
-  
-  pthread_t pro[pro_threads], con[con_threads];
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr , PTHREAD_CREATE_JOINABLE);
+    queue *fifo;
+    
+    double total_elapsed_time = 0;  
+    gettimeofday(&start_program, NULL);
+    
+    double mean_elapsed_time = 0;
+    
+    char filename[24] = "Outputs_v1";
+    
+    pthread_t pro[pro_threads], con[con_threads];
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr , PTHREAD_CREATE_JOINABLE);
 
-  fifo = queueInit ();
-  if (fifo ==  NULL) {
-    fprintf (stderr, "main: Queue Init failed.\n");
-    exit (1);
-  }
-  
-  /*       Create producer and consumer threads      */
-  
-  
-  for (int x=0; x<pro_threads; x++)
-        pthread_create (&pro[x], &attr, producer, fifo);
+    fifo = queueInit ();
+    if (fifo ==  NULL) {
+        fprintf (stderr, "main: Queue Init failed.\n");
+        exit (1);
+    }
+    
+    /*       Create producer and consumer threads      */
+    
+    
+    for (int x=0; x<pro_threads; x++)
+            pthread_create (&pro[x], &attr, producer, fifo);
+            
+    for (int x=0; x<con_threads; x++)
+            pthread_create (&con[x], &attr, consumer, fifo);
+            
+    for (int x=0; x<pro_threads; x++)
+            pthread_join (pro[x], NULL);
+
+    for (int x=0; x<con_threads; x++)
+            pthread_join (con[x], NULL);
+    
+    queueDelete (fifo);
+    
+    printf("\nWow, you made it to the end sailor! Congrats.\n\n");
+    
+    gettimeofday(&end_program, NULL);
+    total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
+    total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
+    
+    
+    
+    for (int x=0; x<MAX_LOOPS*pro_threads; x++)
+    {
+        printf("Elapsed Time #%d is: %Lf us\n", x, elapsedTime[x]);
         
-  for (int x=0; x<con_threads; x++)
-        pthread_create (&con[x], &attr, consumer, fifo);
-        
-  for (int x=0; x<pro_threads; x++)
-        pthread_join (pro[x], NULL);
-
-  for (int x=0; x<con_threads; x++)
-        pthread_join (con[x], NULL);
+        mean_elapsed_time += elapsedTime[x];
+    }
+    
+    mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
+    
+    printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
+    
+    printf("\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f us.\n\n\n", mean_elapsed_time);
+    
+    createCSV(filename, elapsedTime);
   
-  queueDelete (fifo);
-  
-  printf("\nWow, you made it to the end sailor! Congrats.\n\n");
-  
-  gettimeofday(&end_program, NULL);
-  total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
-  total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
-  
-  
-  
-  for (int x=0; x<MAX_LOOPS*pro_threads; x++)
-  {
-      printf("Elapsed Time #%d is: %Lf us\n", x, elapsedTime[x]);
-      
-      mean_elapsed_time += elapsedTime[x];
-  }
-  
-  mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
-  
-  printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
-  
-  printf("\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f us.\n\n\n", mean_elapsed_time);
-  
-  createCSV(filename, elapsedTime);
-
-  return 0;
+    return 0;
 }
 
 void *producer (void *q)
@@ -191,7 +192,7 @@ void *producer (void *q)
     // Starting the timer
     gettimeofday(&t1, NULL);
     
-    producerExecution->t1  = t1.tv_sec*1000000; + t1.tv_usec;
+    producerExecution->t1  = t1.tv_sec*1000000 + t1.tv_usec;
     
     
     // Adding the struct producerExecution to queue
