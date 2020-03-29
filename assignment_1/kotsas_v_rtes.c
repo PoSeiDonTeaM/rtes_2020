@@ -30,7 +30,7 @@
 #define QUEUESIZE 50
 #define pro_threads 1
 #define con_threads 9600
-#define MAX_LOOPS 200
+#define MAX_LOOPS 2000
 
 // Function declaration of all required functions
 void *producer (void *args);
@@ -196,6 +196,8 @@ void *producer (void *q)
     // Starting the timer
     gettimeofday(&t1, NULL);
     
+    elapsedTime[i] = t1.tv_usec;
+    
     // Adding the struct producerExecution to queue
     queueAdd (fifo,producerExecution);
     pthread_mutex_unlock (fifo->mut);
@@ -243,13 +245,13 @@ void *consumer (void *q)
         gettimeofday(&t2, NULL);
         
         // Saving the elapsedTime in an array
-        if(t2.tv_sec - t1.tv_sec > 0)
-        {
-            elapsedTime[consumerCount]    =  (t2.tv_sec - t1.tv_sec) * 1000000;
-            elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec); // sec to ms
-        }
-        else
-            elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec);
+        //if(t2.tv_sec - t1.tv_sec > 0)
+        //{
+        //    elapsedTime[consumerCount]    =  (t2.tv_sec - t1.tv_sec) * 1000000;
+        //    elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec); // sec to ms
+        //}
+        //else
+            elapsedTime[consumerCount]   =  (t2.tv_usec - elapsedTime[consumerCount]);
         printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
 
         // Running the workFunction!
