@@ -28,8 +28,8 @@
 
 #define QUEUESIZE 50
 #define pro_threads 1
-#define con_threads 96
-#define MAX_LOOPS 2000
+#define con_threads 12
+#define MAX_LOOPS 100000
 
 // Function declaration of all required functions
 void *producer (void *args);
@@ -100,7 +100,7 @@ int main ()
     
     double mean_elapsed_time = 0;
     
-    char filename[24] = "Outputs_v1";
+    char filename[24] = "Outputs_v12";
     
     pthread_t pro[pro_threads], con[con_threads];
     pthread_attr_t attr;
