@@ -27,9 +27,9 @@
 #define PI 3.141592654
 
 #define QUEUESIZE 50
-#define pro_threads 10
-#define con_threads 5
-#define MAX_QUEUE_SIZE 100
+#define pro_threads 10000
+#define con_threads 50
+#define MAX_QUEUE_SIZE 1000
 #define MAX_LOOPS 80
 
 // Function declaration of all required functions
@@ -38,12 +38,11 @@ void *consumer (void *args);
 
 struct timeval t1, t2, start_program, end_program;
 
-int elapsedTime[MAX_LOOPS*pro_threads];
+double long elapsedTime[MAX_LOOPS*pro_threads];
 int consumerCount = 0;
+int countNegativeTimes = 0;
 
 double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3};
-
-// int *angles_ptr = angles;
 
 typedef struct {
   void * (*work)(void *);
@@ -63,8 +62,6 @@ queue *queueInit (void);
 void queueDelete (queue *q);
 void queueAdd (queue *q, workFunction *in);
 void queueDel (queue *q, workFunction *out);
-//void queueReduceProducers(queue *q);
-//void queueReduceConsumers(queue *q);
 
 void *work_execution(void *arg)
  {
@@ -122,11 +119,20 @@ int main ()
   printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
+  {
+      printf("Elapsed Time #%d is: %Lf ms\n", x, elapsedTime[x]/1000);
+      
+      if(elapsedTime[x] < 0)
+          countNegativeTimes++;
+      
       mean_elapsed_time += elapsedTime[x];
+  }
+  
+  printf("The number of negative elapsed times is: %d .\n\n", countNegativeTimes);
   
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
-  printf("The mean value of the elapsed time between a producer thread and a consumer one is: %f\n\n", mean_elapsed_time);
+  printf("\n\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f ms.\n\n", mean_elapsed_time);
 
   return 0;
 }
@@ -140,6 +146,7 @@ void *producer (void *q)
 
   for (i = 0; i < MAX_LOOPS; i++)
   {
+      
     
     pthread_mutex_lock (fifo->mut);
     
@@ -211,8 +218,13 @@ void *consumer (void *q)
         gettimeofday(&t2, NULL);
         
         // Saving the elapsedTime in an array
-        elapsedTime[consumerCount]   =  (t2.tv_usec - t1.tv_usec); // sec to ms
-        
+        if(t2.tv_sec - t1.tv_sec > 0)
+        {
+            elapsedTime[consumerCount]    =  (t2.tv_sec - t1.tv_sec) * 1000000;
+            elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec); // sec to ms
+        }
+        else
+            elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec);
         printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
 
         // Running the workFunction!
