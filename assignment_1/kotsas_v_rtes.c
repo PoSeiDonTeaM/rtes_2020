@@ -28,10 +28,9 @@
 #define PI 3.141592654
 
 #define QUEUESIZE 50
-#define pro_threads 10000
-#define con_threads 50
-#define MAX_QUEUE_SIZE 1000
-#define MAX_LOOPS 80
+#define pro_threads 1
+#define con_threads 9600
+#define MAX_LOOPS 200
 
 // Function declaration of all required functions
 void *producer (void *args);
@@ -84,10 +83,8 @@ void createCSV (char *filename, double long elapsedTime[])
     
     fp=fopen(filename,"w+");
     
-    fprintf(fp,"Elapsed Time");
-    
     for (int i=0; i<MAX_LOOPS*pro_threads; i++)
-        fprintf(fp, "\n%Lf", elapsedTime[i]);
+        fprintf(fp, "\n%d, %Lf", i, elapsedTime[i]);
     
     fclose(fp);
     
@@ -140,7 +137,7 @@ int main ()
   total_elapsed_time =  (end_program.tv_sec - start_program.tv_sec)*1000;
   total_elapsed_time += (end_program.tv_usec - start_program.tv_usec)/1000;
   
-  printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
+  
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
   {
@@ -152,11 +149,13 @@ int main ()
       mean_elapsed_time += elapsedTime[x];
   }
   
-  printf("The number of negative elapsed times is: %d .\n\n", countNegativeTimes);
+  printf("\nThe number of negative elapsed times is: %d .\n\n", countNegativeTimes);
   
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
-  printf("\n\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f ms.\n\n", mean_elapsed_time);
+  printf("Total program elapsed time is: %f ms\n\n", total_elapsed_time);
+  
+  printf("\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f us.\n\n\n", mean_elapsed_time);
   
   createCSV(filename, elapsedTime);
 
@@ -276,11 +275,6 @@ void *consumer (void *q)
     //usleep(200000);
   }
   
-  
- 
-  //pthread_mutex_lock(fifo->mut);
-  //queueReduceConsumers(fifo);
-  //pthread_mutex_unlock(fifo->mut);
   
   return (NULL);
 }
