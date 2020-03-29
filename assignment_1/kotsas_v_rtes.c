@@ -53,7 +53,6 @@ typedef struct {
   workFunction buf[QUEUESIZE];
   long head, tail;
   int full, empty;
-  int num_prods,num_cons;
   pthread_mutex_t *mut;
   pthread_cond_t *notFull, *notEmpty;
 } queue;
@@ -339,17 +338,3 @@ void queueDel (queue *q, workFunction *out)
 
   return;
 }
-
-
-
- /*
-void * my_function(void *arg){
-  long int k = *(long int *)arg;  
-  int error;
-  FILE *fp;
-  printf("%ld\n",k);
-  fp=fopen("/home/kostas/EMBEDDED/assignments/1/results.txt","a");
-  fprintf(fp, "%ld\n", k);
-  fclose(fp);
-}
-*/
