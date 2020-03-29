@@ -27,10 +27,10 @@
 #define PI 3.141592654
 
 #define QUEUESIZE 50
-#define pro_threads 100
-#define con_threads 50
+#define pro_threads 10
+#define con_threads 5
 #define MAX_QUEUE_SIZE 100
-#define MAX_LOOPS 80000
+#define MAX_LOOPS 80
 
 // Function declaration of all required functions
 void *producer (void *args);
@@ -65,7 +65,6 @@ void queueAdd (queue *q, workFunction *in);
 void queueDel (queue *q, workFunction *out);
 //void queueReduceProducers(queue *q);
 //void queueReduceConsumers(queue *q);
-void * my_function(void *arg); 
 
 void *work_execution(void *arg)
  {
@@ -84,8 +83,7 @@ int main ()
   gettimeofday(&start_program, NULL);
   
   double mean_elapsed_time = 0;
-  
-  struct timeval t1, t2, start_program, end_program;
+
   
   pthread_t pro[pro_threads], con[con_threads];
   pthread_attr_t attr;
@@ -102,10 +100,10 @@ int main ()
   
   
   for (int x=0; x<pro_threads; x++)
-        pthread_create (&pro[x], NULL, producer, NULL);
+        pthread_create (&pro[x], &attr, producer, fifo);
         
   for (int x=0; x<con_threads; x++)
-        pthread_create (&con[x], NULL, consumer, NULL);
+        pthread_create (&con[x], &attr, consumer, fifo);
         
   for (int x=0; x<pro_threads; x++)
         pthread_join (pro[x], NULL);
@@ -142,6 +140,7 @@ void *producer (void *q)
 
   for (i = 0; i < MAX_LOOPS; i++)
   {
+    printf("Hey");  
     
     pthread_mutex_lock (fifo->mut);
     
@@ -168,10 +167,12 @@ void *producer (void *q)
     
     // Adding the struct producerExecution to queue
     
+    printf("Hey");
+    
     queueAdd (fifo,producerExecution);
     pthread_mutex_unlock (fifo->mut);
     pthread_cond_signal (fifo->notEmpty);
-    //usleep (100000);
+    usleep (100000);
   }
 
   pthread_mutex_lock(fifo->mut);
