@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <iostream> 
 #include <queue>
 #include <math.h>
 #include <sys/time.h>
@@ -29,7 +28,7 @@
 
 #define QUEUESIZE 50
 #define pro_threads 1
-#define con_threads 9600
+#define con_threads 96
 #define MAX_LOOPS 2000
 
 // Function declaration of all required functions
@@ -40,7 +39,6 @@ struct timeval t1, t2, start_program, end_program;
 
 double long elapsedTime[MAX_LOOPS*pro_threads];
 int consumerCount = 0;
-int countNegativeTimes = 0;
 
 double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3};
 
@@ -142,13 +140,8 @@ int main ()
   {
       printf("Elapsed Time #%d is: %Lf us\n", x, elapsedTime[x]);
       
-      if(elapsedTime[x] < 0)
-          countNegativeTimes++;
-      
       mean_elapsed_time += elapsedTime[x];
   }
-  
-  printf("\nThe number of negative elapsed times is: %d .\n\n", countNegativeTimes);
   
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
@@ -183,7 +176,7 @@ void *producer (void *q)
     
     double *x;
     
-    x= (double *)malloc(sizeof(double));
+    x = (double *)malloc(sizeof(double));
     producerExecution = (workFunction *)malloc(sizeof(workFunction));
     
     x = &angles[rand()%9];
@@ -195,22 +188,17 @@ void *producer (void *q)
     // Starting the timer
     gettimeofday(&t1, NULL);
     
-    elapsedTime[i] = t1.tv_usec;
+    elapsedTime[i]  = t1.tv_sec*1000000;
+    elapsedTime[i] += t1.tv_usec;
     
     // Adding the struct producerExecution to queue
     queueAdd (fifo,producerExecution);
     pthread_mutex_unlock (fifo->mut);
     pthread_cond_signal (fifo->notEmpty);
-    usleep (100000);
   }
   
-  pthread_mutex_lock(fifo->mut);
-  //queueReduceProducers(fifo);
-  
-  // Unlock the mutex, broadcast that producer added an element
-  pthread_mutex_unlock(fifo->mut);
-  pthread_cond_broadcast (fifo->notEmpty);
-  return (NULL);
+    pthread_cond_broadcast (fifo->notEmpty);
+    return (NULL);
 }
 
 void *consumer (void *q)
@@ -243,14 +231,10 @@ void *consumer (void *q)
         // Stopping the timer
         gettimeofday(&t2, NULL);
         
-        // Saving the elapsedTime in an array
-        //if(t2.tv_sec - t1.tv_sec > 0)
-        //{
-        //    elapsedTime[consumerCount]    =  (t2.tv_sec - t1.tv_sec) * 1000000;
-        //    elapsedTime[consumerCount]   +=  (t2.tv_usec - t1.tv_usec); // sec to ms
-        //}
-        //else
-            elapsedTime[consumerCount]   =  (t2.tv_usec - elapsedTime[consumerCount]);
+        //Saving the elapsedTime in an array
+        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 - elapsedTime[consumerCount]); // sec to us
+        elapsedTime[consumerCount]   +=  (t2.tv_usec - elapsedTime[consumerCount]);       
+        
         printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
 
         // Running the workFunction!
