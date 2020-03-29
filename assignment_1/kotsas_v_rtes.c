@@ -23,6 +23,7 @@
 #include <queue>
 #include <math.h>
 #include <sys/time.h>
+#include <string.h>
 
 #define PI 3.141592654
 
@@ -72,6 +73,28 @@ void *work_execution(void *arg)
     
  }
 
+void createCSV (char *filename, double long elapsedTime[])
+{
+ 
+    printf("\n Creating %s.csv file",filename);
+ 
+    FILE *fp;
+    
+    filename = strcat(filename,".csv");
+    
+    fp=fopen(filename,"w+");
+    
+    fprintf(fp,"Elapsed Time");
+    
+    for (int i=0; i<MAX_LOOPS*pro_threads; i++)
+        fprintf(fp, "\n%Lf", elapsedTime[i]);
+    
+    fclose(fp);
+    
+    printf("\n %sfile created",filename);
+    
+}
+ 
 int main ()
 {
   queue *fifo;
@@ -80,7 +103,8 @@ int main ()
   gettimeofday(&start_program, NULL);
   
   double mean_elapsed_time = 0;
-
+  
+  char filename[24] = "Outputs_v1";
   
   pthread_t pro[pro_threads], con[con_threads];
   pthread_attr_t attr;
@@ -120,7 +144,7 @@ int main ()
   
   for (int x=0; x<MAX_LOOPS*pro_threads; x++)
   {
-      printf("Elapsed Time #%d is: %Lf ms\n", x, elapsedTime[x]/1000);
+      printf("Elapsed Time #%d is: %Lf us\n", x, elapsedTime[x]);
       
       if(elapsedTime[x] < 0)
           countNegativeTimes++;
@@ -133,6 +157,8 @@ int main ()
   mean_elapsed_time = mean_elapsed_time/(MAX_LOOPS*pro_threads);
   
   printf("\n\n\nThe mean value of the elapsed time between a producer thread and a consumer one is: %f ms.\n\n", mean_elapsed_time);
+  
+  createCSV(filename, elapsedTime);
 
   return 0;
 }
@@ -317,6 +343,8 @@ void queueDel (queue *q, workFunction *out)
 
   return;
 }
+
+
 
  /*
 void * my_function(void *arg){
