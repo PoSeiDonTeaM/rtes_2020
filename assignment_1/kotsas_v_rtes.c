@@ -166,15 +166,12 @@ void *producer (void *q)
     gettimeofday(&t1, NULL);
     
     // Adding the struct producerExecution to queue
-    
-    printf("Hey");
-    
     queueAdd (fifo,producerExecution);
     pthread_mutex_unlock (fifo->mut);
     pthread_cond_signal (fifo->notEmpty);
     usleep (100000);
   }
-
+  
   pthread_mutex_lock(fifo->mut);
   //queueReduceProducers(fifo);
   
@@ -209,6 +206,11 @@ void *consumer (void *q)
     
     pthread_mutex_unlock (fifo->mut);
     pthread_cond_signal (fifo->notFull);
+    
+    printf(consumerCount);
+    
+    if(consumerCount == MAX_LOOPS*pro_threads-1)
+        printf("consumerCount almost reached");
     
     if(consumerCount == MAX_LOOPS*pro_threads)
         break;
