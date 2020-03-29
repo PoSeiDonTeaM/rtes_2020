@@ -35,7 +35,7 @@
 void *producer (void *args);
 void *consumer (void *args);
 
-struct timeval t1, t2, start_program, end_program;
+struct timeval start_program, end_program;
 
 double long elapsedTime[MAX_LOOPS*pro_threads];
 int consumerCount = 0;
@@ -45,7 +45,8 @@ double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3
 typedef struct {
   void * (*work)(void *);
   void * arg;
-}workFunction ;
+  double t1;
+}workFunction;
 
 typedef struct {
   workFunction buf[QUEUESIZE];
@@ -158,6 +159,8 @@ void *producer (void *q)
 {
   queue *fifo;
   int i;
+  
+  struct timeval t1;
 
   fifo = (queue *)q;
 
@@ -188,8 +191,8 @@ void *producer (void *q)
     // Starting the timer
     gettimeofday(&t1, NULL);
     
-    elapsedTime[i]  = t1.tv_sec*1000000;
-    elapsedTime[i] += t1.tv_usec;
+    producerExecution->t1  = t1.tv_sec*1000000; + t1.tv_usec;
+    
     
     // Adding the struct producerExecution to queue
     queueAdd (fifo,producerExecution);
@@ -206,6 +209,8 @@ void *consumer (void *q)
     
   queue *fifo;
   int i;
+  
+  struct timeval t2;
   
   workFunction functionExecuter;
 
@@ -232,7 +237,7 @@ void *consumer (void *q)
         gettimeofday(&t2, NULL);
         
         //Saving the elapsedTime in an array
-        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 + t2.tv_usec - elapsedTime[consumerCount]); // sec to us
+        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 + t2.tv_usec - functionExecuter.t1); // sec to us
         
         printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
 
