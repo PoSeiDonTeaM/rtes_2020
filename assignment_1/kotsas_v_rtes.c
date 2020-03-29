@@ -220,18 +220,18 @@ void *consumer (void *q)
       
     pthread_mutex_lock (fifo->mut);
     
-        
-    
     if(fifo->empty!=1 && consumerCount < MAX_LOOPS*pro_threads)
     {
         queueDel (fifo, &functionExecuter);
-    
-        pthread_mutex_unlock (fifo->mut);
+        
         pthread_cond_signal (fifo->notFull);
+    
+        //pthread_mutex_unlock (fifo->mut);
+        //pthread_cond_signal (fifo->notFull);
     
         printf("ConsumerCount is: %d",consumerCount);
         
-        pthread_mutex_lock(fifo -> mut);
+        //pthread_mutex_lock(fifo -> mut);
     
         // Stopping the timer
         gettimeofday(&t2, NULL);
@@ -245,6 +245,8 @@ void *consumer (void *q)
         functionExecuter.work(functionExecuter.arg);
         
         consumerCount++;
+        
+        
     }
     else if(consumerCount == MAX_LOOPS*pro_threads)
     {
@@ -258,7 +260,7 @@ void *consumer (void *q)
             pthread_cond_wait (fifo->notEmpty, fifo->mut);
         }
     
-
+    
     // Unlocking the mutex
     pthread_mutex_unlock(fifo -> mut);
     //usleep(200000);
