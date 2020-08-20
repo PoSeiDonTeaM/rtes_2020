@@ -1,2 +1,1 @@
-# rtes_2020
-AUTh ECE Subject: Real-Time Embedded Systems
+# [AUTh] Real-Time Embedded Systems 2020
