@@ -156,7 +156,47 @@ for(int i = 0; i < conNum; i++)
     }
     
     
+    //! Cleans up.
+    free(jobAliveTime);
+    free(inputTime);
+    free(executionTime);
+    if (periodSelection == 4) {
+        free(periodDrift_1);
+        free(periodDrift_2);
+        free(periodDrift_3);
+    }
+    else
+        free(totalDrift);
+    free(tim);
+
+    // Deletes Queue.
+    queueDelete(fifo);
+
+    pthread_mutex_destroy (argC->timMut);
+    free(argC->timMut);
+    free(argC);
+    pthread_mutex_destroy (timMut);
+    free(timMut);
+
+    // Leaving some time for the system to rest, till next iteration.
+    usleep(100000);
+    
 }
+    
+    // Closes files.
+    fclose(jobAliveTimeFile);
+    fclose(inputTimeFile);
+    fclose(executionTimeFile);
+    if (periodSelection == 4) {
+        fclose(periodDrift_1_File);
+        fclose(periodDrift_2_File);
+        fclose(periodDrift_3_File);
+    }
+    else
+        fclose(totalDriftFile);
+        
+
+    return 0;
 
 }
 
@@ -284,7 +324,139 @@ void storeData(int N, FILE *file, int *data) {
     fprintf(file, "\n");
 } 
 
+// TODO: Modify prod, cons, work functions and integrate them to the current file.
+
+void *producer (void *q)
+{
+  
+    Timer *timer = (Timer *) arg;
+  
+    sleep(timer->startDelay);
+    
+    queue *fifo;
+    int i;
+
+    struct timeval jobStart, jobEnd, executionStart, executionEnd, temp;
+    
+    int drifting    = 0;
+    int driftCount  = -1;
+
+
+    for (i = 0; i < timer->tasksToExecute; i++)
+    {
+        
+        // Acquiring timestamps to calculate time drifting
+        gettimeofday(&temp, NULL);
+        executionStart = executionEnd;
+        executionEnd = temp;
+
+        for
+
+        workFunction *producerExecution;
+
+        double *x;
+
+        x = (double *)malloc(sizeof(double));
+        producerExecution = (workFunction *)malloc(sizeof(workFunction));
+
+        x = &angles[rand()%9];
+
+        producerExecution->arg  = (void *) x;  // Passing the address of x to arg with typecast void
+
+        producerExecution->work = &work_execution; // Passing the address of the function work_execution
+
+        // Starting the timer
+        gettimeofday(&t1, NULL);
+
+        producerExecution->t1  = t1.tv_sec*1000000 + t1.tv_usec;
+
+
+        // Adding the struct producerExecution to queue
+        queueAdd (fifo,producerExecution);
+        pthread_mutex_unlock (fifo->mut);
+        pthread_cond_signal (fifo->notEmpty);
+    }
+
+    pthread_cond_broadcast (fifo->notEmpty);
+    return (NULL);
+}
+
+void *consumer (void *q)
+{
+    
+  queue *fifo;
+  int i;
+  
+  struct timeval t2;
+  
+  workFunction functionExecuter;
+
+  fifo = (queue *)q;
+
+  while(1) {
+      
+    pthread_mutex_lock (fifo->mut);
+    
+    if(fifo->empty!=1 && consumerCount < MAX_LOOPS*pro_threads)
+    {
+        queueDel (fifo, &functionExecuter);
+        
+        pthread_cond_signal (fifo->notFull);
+    
+        //pthread_mutex_unlock (fifo->mut);
+        //pthread_cond_signal (fifo->notFull);
+    
+        printf("ConsumerCount is: %d",consumerCount);
+        
+        //pthread_mutex_lock(fifo -> mut);
+    
+        // Stopping the timer
+        gettimeofday(&t2, NULL);
+        
+        //Saving the elapsedTime in an array
+        elapsedTime[consumerCount]    =  (t2.tv_sec*1000000 + t2.tv_usec - functionExecuter.t1); // sec to us
+        
+        printf("Hey, I'm consumer with ID %lu. I'm calculating the cosine of angle: %f\n\n", pthread_self(), *(double*)functionExecuter.arg);
+
+        // Running the workFunction!
+        functionExecuter.work(functionExecuter.arg);
+        
+        consumerCount++;
+        
+        
+    }
+    else if(consumerCount == MAX_LOOPS*pro_threads)
+    {
+        pthread_mutex_unlock(fifo -> mut);
+        break;
+    }
+    
+    else if (fifo->empty) 
+        {
+            printf ("consumer: queue EMPTY.\n\n");
+            pthread_cond_wait (fifo->notEmpty, fifo->mut);
+        }
     
     
+    // Unlocking the mutex
+    pthread_mutex_unlock(fifo -> mut);
+    //usleep(200000);
+  }
+  
+  
+  return (NULL);
+}
+    
+void *work_execution(void *arg)
+ {
+     
+    double output = cos(*(int*)arg);
+    
+    //printf("Value of Output is: %f\n", output);
+    
+ }
+
+ 
+// TODO: Add stop, error functions
     
     
