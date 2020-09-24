@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include "queue.h"
 
 typedef struct {
     Queue *queue;

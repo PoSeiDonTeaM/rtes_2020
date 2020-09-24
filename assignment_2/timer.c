@@ -75,4 +75,3 @@ void startat(Timer *tim, int d, int m, int y, int h, int min, int sec)
     pthread_create(&tim->tid, NULL, tim->producer, tim);
 }
 
-

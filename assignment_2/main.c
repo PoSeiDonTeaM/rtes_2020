@@ -15,28 +15,31 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "timer.h"
+#include "queue.h"
 #include <sys/time.h>
 #include <math.h>
 #include <pthread.h>
 
 
 #define PI 3.141592654
+#define con_threads 3
 
-#define con_threads 33
 
+double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3}; 
 
 int inputDuration;
 int jobsExecuted;
 int lostJobs;
+int jobsAdded;
 
 // Parameter constructor
-
-void paramInit(queueSize);
-void fileInit();
-void memoryInit(runtime, period[], periodSelection);
-void totalJobsCalc(runtime, period[], periodSelection);
-void timCreation(period[], runtime, inputDuration, totalDrift, periodDrift_1, periodDrift_2, periodDrift_3, timMut);
+int  totalJobsCalc(int runtime, int period[3], int periodSelection);
 void storeData(int N, FILE *file, int *data);
+void *producer(void *arg);
+void *consumer(void *arg);
+void *work_execution(void *arg);
+void *stop(void *arg);
+void *error();
 
 typedef struct {
     Queue *queue;
@@ -47,12 +50,6 @@ typedef struct {
     int *flag;
     pthread_mutex_t *timMut;
 } ArgC;
-
-typedef struct {
-  void * (*work)(void *);
-  void * arg;
-  struct timeval stopwatch;
-}workFunction;
 
 int main() {
     
@@ -104,32 +101,114 @@ int main() {
     
 
 // Calculate total jobs 
-totalJobs = totalJobsCalc(runtime, period[], periodSelection);
+int totalJobs = totalJobsCalc(runtime, period, periodSelection);
 
 // Initialize files to store values
-fileInit();
+FILE *executionTimeFile = fopen("executionTime.csv", "w");
+    
+    FILE *totalDriftFile, *periodDrift_1_File, *periodDrift_2_File, *periodDrift_3_File;
+    
+    if (periodSelection == 4) {
+        periodDrift_1_File = fopen("periodDrift_1.csv", "w");
+        periodDrift_2_File = fopen("periodDrift_2.csv", "w");
+        periodDrift_3_File = fopen("periodDrift_3.csv", "w");
+    }else
+    {
+        totalDriftFile = fopen("totalDrift.csv", "w");
+    }
+    
+    FILE *jobAliveTimeFile = fopen("jobAliveTime.csv", "w");
+    
+    FILE *inputDurationFile = fopen("inputDuration.csv", "w");
 
-for(int i = 0; i < conNum; i++)
+for(int i = 0; i < con_threads; i++)
 {
     // Initialize parameters
-    paramInit();
+    int jobsExecuted    = 0;
+    int lostJobs        = 0;
+    int jobsAdded       = 0;
+
+    // Initializes Queue.
+    Queue *fifo;
+    fifo = queueInit(queueSize);
+    if (fifo == NULL) {
+        fprintf(stderr, "main: Queue Init failed.\n");
+        exit(1);
+    }
     
     // Allocate memory to store the values later
-    memoryInit(runtime, period[], periodSelection);
+    int *jobAliveTime   = (int *)malloc(totalJobs * sizeof(int));
+    int *inputDuration  = (int *)malloc(totalJobs * sizeof(int));
+    int *executionTime  = (int *)malloc(totalJobs * sizeof(int));
+    int *totalDrift_mem, *periodDrift_1_mem, *periodDrift_2_mem, *periodDrift_3_mem;
+    
+    if(periodSelection == 4)
+    {
+        
+        periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
+        
+        periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
+        
+        periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
+        
+    }
+    else
+    {
+        totalDrift_mem = (int *)malloc(totalJobs * sizeof(int));
+    }
     
     ArgC *argC = (ArgC*)malloc(sizeof(ArgC));
     argC->totalJobs         = totalJobs;
     argC->jobAliveTime      = jobAliveTime;
-    argC->jobExecutionTime  = jobExecutionTime;
+    argC->jobExecutionTime  = executionTime;
     argC->timMut            = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(argC->timMut, NULL);
     
+    pthread_t con[con_threads];
+    
     // Creating consumer threads
     for (int x=0; x<con_threads; x++)
-            pthread_create (&con[x], &attr, consumer, fifo);
+            pthread_create (&con[x], NULL, consumer, fifo);
     
-    // Creating required timers
-    void timCreation(period[], runtime, inputDuration, totalDrift, periodDrift_1, periodDrift_2, periodDrift_3, timMut);
+    // TIMER CREATION STARTS HERE
+    
+    Timer *timer;
+        
+    pthread_mutex_t *timMut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(timMut, NULL);
+    
+    if (periodSelection == 1) {
+        timer = (Timer *)malloc(sizeof(Timer));
+        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop,
+                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+        start(timer);
+    }
+    else if (periodSelection == 2) {
+        timer = (Timer *)malloc(sizeof(Timer));
+        timerInit(timer, period[1], runtime * (int)1e3 / period[1], stop,
+                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+        start(timer);
+    }
+    else if (periodSelection == 3) {
+        timer = (Timer *)malloc(sizeof(Timer));
+        timerInit(timer, period[2], runtime * (int)1e3 / period[2], stop,
+                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+        start(timer);
+    }
+    else if (periodSelection == 4) {
+        timer = (Timer *)malloc(3 * sizeof(Timer));
+        timerInit(&timer[0], period[0], runtime * (int)1e3 / period[0],
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
+        timerInit(&timer[1], period[1], runtime * (int)1e3 / period[1],
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_2_mem, timMut);
+        timerInit(&timer[2], period[2], runtime * (int)1e3 / period[2],
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
+        start(&timer[0]);
+        start(&timer[1]);
+        start(&timer[2]);
+    }
+    
+    // TIMER CREATION ENDS HERE
     
     // Waiting for timers to conclude operations
     if (periodSelection == 4)
@@ -153,9 +232,9 @@ for(int i = 0; i < conNum; i++)
     storeData(jobsExecuted, inputDurationFile, inputDuration);
     
     if(periodSelection == 4){
-        storeData(runtime * (int)1e3 / period[0] - 1, periodDrift_1_File, periodDrift_1);
-        storeData(runtime * (int)1e3 / period[1] - 1, periodDrift_2_File, periodDrift_2);
-        storeData(runtime * (int)1e3 / period[2] - 1, periodDrift_3_File, periodDrift_3);
+        storeData(runtime * (int)1e3 / period[0] - 1, periodDrift_1_File, periodDrift_1_mem);
+        storeData(runtime * (int)1e3 / period[1] - 1, periodDrift_2_File, periodDrift_2_mem);
+        storeData(runtime * (int)1e3 / period[2] - 1, periodDrift_3_File, periodDrift_3_mem);
     }else
     {
         storeData(inputDuration - 1, totalDriftFile, totalDrift_mem);
@@ -173,7 +252,7 @@ for(int i = 0; i < conNum; i++)
     }
     else
         free(totalDrift_mem);
-    free(tim);
+    free(timer);
 
     // Deletes Queue.
     queueDelete(fifo);
@@ -206,69 +285,8 @@ for(int i = 0; i < conNum; i++)
 
 }
 
-void paramInit(int queueSize){
-    
-int inputDuration   = 0;
-int jobsExecuted    = 0;
-int lostJobs        = 0;
 
-// Initializes Queue.
-        Queue *fifo;
-        fifo = queueInit(queueSize);
-        if (fifo == NULL) {
-            fprintf(stderr, "main: Queue Init failed.\n");
-            exit(1);
-        }
-        
-}
-
-// File Read/Write permissions constructor to store simulation results
-
-void fileInit(){
-    
-    FILE *executionTimeFile = fopen("executionTime.csv", "w");
-    
-    FILE *totalDriftFile, *periodDrift_1_File, *periodDrift_2_File, *periodDrift_3_File;
-    
-    if (periodSelection == 4) {
-        periodDrift_1_File = fopen("periodDrift_1.csv", "w");
-        periodDrift_2_File = fopen("periodDrift_2.csv", "w");
-        periodDrift_3 = fopen("periodDrift_3.csv", "w");
-    }else
-    {
-        totalDrift = fopen("totalDrift.csv", "w");
-    }
-    
-    FILE *jobAliveTimeFile = fopen("jobAliveTime.csv", "w");
-    
-    FILE *inputDurationFile = fopen("inputDuration.csv", "w");
-    
-}
-
-void memoryInit(int runtime, int period[], int periodSelection){
-    
-    int *jobAliveTime   = (int *)malloc(totalJobs * sizeof(int));
-    int *inputDuration      = (int *)malloc(totalJobs * sizeof(int));
-    int *executionTime  = (int *)malloc(totalJobs * sizeof(int));
-    
-    if(periodSelection == 4)
-    {
-        
-        int *periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
-        
-        int *periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
-        
-        int *periodDrift_1_mem  = (int *)malloc(runtime * (int)1e3 / period[0] * sizeof(int));
-        
-    }
-    else
-    {
-        int *totalDrift_mem = (int *)malloc(totalJobs * sizeof(int));
-    }
-    
-}
-
-int totalJobsCalc(int untime, int period[], int periodSelection)
+int totalJobsCalc(int runtime, int period[3], int periodSelection)
 {
     
     int total = 0;
@@ -285,44 +303,6 @@ int totalJobsCalc(int untime, int period[], int periodSelection)
     return total;
 }
 
-void timCreation(int period[], int runtime, int inputDuration, int totalDrift_mem, int periodDrift_1, int periodDrift_2, int periodDrift_3, pthread_mutex_t *timMut){
-    
-    Timer *timer;
-        
-    pthread_mutex_t *timMut = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(timMut, NULL);
-    
-    if (mode == 1) {
-        timer = (Timer *)malloc(sizeof(Timer));
-        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
-        start(timer);
-    }
-    else if (mode == 2) {
-        timer = (Timer *)malloc(sizeof(Timer));
-        timerInit(timer, period[1], runtime * (int)1e3 / period[1], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
-        start(timer);
-    }
-    else if (mode == 3) {
-        timer = (Timer *)malloc(sizeof(Timer));
-        timerInit(timer, period[2], runtime * (int)1e3 / period[2], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
-        start(timer);
-    }
-    else if (mode == 4) {
-        timer = (Timer *)malloc(3 * sizeof(Timer));
-        timerInit(&timer[0], period[0], runtime * (int)1e3 / period[0],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
-        timerInit(&timer[1], period[1], runtime * (int)1e3 / period[1],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_2_mem, timMut);
-        timerInit(&timer[2], period[2], runtime * (int)1e3 / period[2],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
-        start(&timer[0]);
-        start(&timer[1]);
-        start(&timer[2]);
-    }
-}
  
 void storeData(int N, FILE *file, int *data) {
     for (int i=0; i<N; i++)
@@ -335,7 +315,7 @@ void storeData(int N, FILE *file, int *data) {
 void *producer (void *q)
 {
   
-    Timer *timer = (Timer *) arg;
+    Timer *timer = (Timer *)q;
   
     sleep(timer->startDelay);
         
@@ -362,68 +342,68 @@ void *producer (void *q)
         
         // Creating a new workFunction Element on each iteration
         workFunction prod;
-        prod.work = tim->timerFcn; 
+        prod.work = timer->timerFcn; 
         prod.arg  = (void *) x;  // Passing the address of x to arg with typecast void
 
         // Locking mutex of queue to start adding elements.
-        pthread_mutex_lock(tim->queue->mut);
+        pthread_mutex_lock(timer->queue->mut);
         
         // Queue Full -> Send error signal
-        if(tim->queue->full)
+        if(timer->queue->full)
         {
-            pthread_mutex_unlock(tim->queue->mut);
-            pthread_cond_signal(tim->queue->notEmpty);
+            pthread_mutex_unlock(timer->queue->mut);
+            pthread_cond_signal(timer->queue->notEmpty);
             
             // Unlock mutex to start the error function
-            pthread_mutex_lock(tim->timMut);
-            tim->errorFcn();
-            pthread_mutex_unlock(tim->timMut);
+            pthread_mutex_lock(timer->timMut);
+            timer->errorFcn();
+            pthread_mutex_unlock(timer->timMut);
         } 
         
         // Queue not full -> Adding elements to queue
         else 
         {
             gettimeofday(&prod.stopwatch, NULL);
-            queueAdd(tim->queue, prod);
+            queueAdd(timer->queue, prod);
             gettimeofday(&jobEnd, NULL);
 
 
             pthread_mutex_unlock(timer->queue->mut);
             pthread_cond_signal(timer->queue->notEmpty);
-            pthread_mutex_lock(timer->tMut);
+            pthread_mutex_lock(timer->timMut);
         
             int inputDuration = (jobEnd.tv_sec - jobStart.tv_sec)*1000000 + (jobEnd.tv_usec - jobStart.tv_usec);
             
-            tim->inputDuration[jobsAdded] = inputDuration;
+            timer->input[jobsAdded] = inputDuration;
             jobsAdded++;
             
-            pthread_mutex_unlock(tim->timMut);
+            pthread_mutex_unlock(timer->timMut);
         }
         
         if (i==0)
         {
-            usleep(tim->period*1000);
+            usleep(timer->period*1000);
             continue;
         }
         
-        totalDrift_mem = (executionEnd.tv_sec - executionStart.tv_sec)*1000000 + executionEnd.tv_usec - executionStart.tv_usec - tim->period*1000;
+        int drift = (executionEnd.tv_sec - executionStart.tv_sec)*1000000 + executionEnd.tv_usec - executionStart.tv_usec - timer->period*1000;
         
-        drifting = totalDrift + totalDrift_mem;
+        drifting = drifting + drift;
         
-        if(drifting > tim->period*1000)
-            totalDrift_mem = tim->period*1000;
+        if(drifting > timer->period*1000)
+            drift = timer->period*1000;
         else
-            totalDrift_mem = drifting;
+            drift = drifting;
         
-        tim->timDrift[driftCount] = drifting;
+        timer->timDrift[driftCount] = drifting;
         driftCount++;
         
-        usleep(tim->period*1000 - timDrift);
+        usleep(timer->period*1000 - drift);
     }
         
     
 
-    tim->stopFcn((void *) &tim->period); // Stop timer function starts here
+    timer->stopFcn((void *) &timer->period); // Stop timer function starts here
     
     return (NULL);
 }
@@ -431,7 +411,7 @@ void *producer (void *q)
 void *consumer (void *q)
 {
    
-  ArgC *argC = (ArgC *)arg;  
+  ArgC *argC = (ArgC *)q;  
 
   int i;
   
@@ -442,7 +422,7 @@ void *consumer (void *q)
 
   while(1) {
       
-    pthread_mutex_lock (argC->queue-mut);
+    pthread_mutex_lock (argC->queue->mut);
     
     // TODO: Check if needs a while, instead of an if statement only.
     if(argC->queue->empty)
@@ -454,7 +434,7 @@ void *consumer (void *q)
     queueDel(argC->queue, &result);
     gettimeofday(&jobAliveEnd, NULL);
     
-    pthread_mutex_unlock(argC->queue-mut);
+    pthread_mutex_unlock(argC->queue->mut);
     pthread_cond_signal(argC->queue->notFull);
 
 
@@ -513,64 +493,3 @@ void *stop(void *arg) {
     int *period = (int *) arg;
     printf("Stop operation started by %d millisecond period timer.\n", *period);
 }    
-
-// Queue Functions implemented below.
-
-queue *queueInit (void)
-{
-  queue *q;
-
-  q = (queue *)malloc (sizeof (queue));
-  if (q == NULL) return (NULL);
-
-  q->empty = 1;
-  q->full = 0;
-  q->head = 0;
-  q->tail = 0;
-  q->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
-  pthread_mutex_init (q->mut, NULL);
-  q->notFull = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-  pthread_cond_init (q->notFull, NULL);
-  q->notEmpty = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-  pthread_cond_init (q->notEmpty, NULL);
-	
-  return (q);
-}
-
-void queueDelete (queue *q)
-{
-  pthread_mutex_destroy (q->mut);
-  free (q->mut);	
-  pthread_cond_destroy (q->notFull);
-  free (q->notFull);
-  pthread_cond_destroy (q->notEmpty);
-  free (q->notEmpty);
-  free (q);
-}
-
-void queueAdd (queue *q, int in)
-{
-  q->buf[q->tail] = in;
-  q->tail++;
-  if (q->tail == QUEUESIZE)
-    q->tail = 0;
-  if (q->tail == q->head)
-    q->full = 1;
-  q->empty = 0;
-
-  return;
-}
-
-void queueDel (queue *q, int *out)
-{
-  *out = q->buf[q->head];
-
-  q->head++;
-  if (q->head == QUEUESIZE)
-    q->head = 0;
-  if (q->head == q->tail)
-    q->empty = 1;
-  q->full = 0;
-
-  return;
-}
