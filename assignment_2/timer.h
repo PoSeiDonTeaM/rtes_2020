@@ -9,6 +9,8 @@
  * @date         : 20 August 2020                                    *
  *                                                                   *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#ifndef TIMER_H_INCLUDED    
+#define TIMER_H_INCLUDED
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -37,3 +39,5 @@ void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void
 void start(Timer *tim);
 
 void startat(Timer *tim, int d, int m, int y, int h, int min, int sec);
+
+#endif

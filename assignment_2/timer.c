@@ -11,7 +11,7 @@
  *                                                                   *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <timer.h>
+#include "timer.h"
 
 // Timer Initialization
 
@@ -38,7 +38,7 @@ void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void
 // Starting timer instantly
 
 void start(Timer *tim) {
-    pthread_create(&tim->tid, NULL, tim->producer, tim);
+    pthread_create(&tim->tid, NULL, tim->prod, tim);
 }
 
 // Starting timer at a specific date/time
@@ -60,7 +60,7 @@ void startat(Timer *tim, int d, int m, int y, int h, int min, int sec)
     // Calculate the delay to compensate between current time and desired execution time
     
     time_t now = time(NULL);
-    delay = (int) difftime(now, mktime(&init); // Taking the difference between the two timestamps.
+    delay = (int) difftime(now, mktime(&init)); // Taking the difference between the two timestamps.
     
     if(delay > 0)
     {
@@ -72,6 +72,6 @@ void startat(Timer *tim, int d, int m, int y, int h, int min, int sec)
         tim->startDelay = delay;
     }
     
-    pthread_create(&tim->tid, NULL, tim->producer, tim);
+    pthread_create(&tim->tid, NULL, tim->prod, tim);
 }
 

@@ -15,11 +15,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "timer.h"
-#include "queue.h"
 #include <sys/time.h>
 #include <math.h>
 #include <pthread.h>
-
+#include "queue.h"
 
 #define PI 3.141592654
 #define con_threads 3
