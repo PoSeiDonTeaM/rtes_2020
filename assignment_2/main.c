@@ -37,6 +37,8 @@ int jobsAdded;
 int totalJobs = 0;
 
 
+volatile int flag = 0;
+
 // Parameter constructor
 int  totalJobsCalc(int runtime, int* period, int periodSelection);
 void storeData(int N, FILE *file, int *data);
@@ -228,24 +230,27 @@ for(int i = 0; i < con_threads; i++)
     // Waiting for timers to conclude operations
     if (periodSelection == 4)
     {
-        for(int x = 0; x < 3; x++)
+        for(int x = 0; x < con_threads; x++)
             pthread_join(timer[x].tid,NULL);
     } else
         pthread_join(timer->tid, NULL);
     
-    
+    flag = 1;
+
+
+
     
     pthread_cond_broadcast(fifo->notEmpty);
     
-    for (int x=0; x<con_threads; x++)
+    for (int x=0; x < con_threads; x++)
             pthread_join (con[x], NULL);
     
     
     // Store data to file for later computations 
     
     
-    storeData(jobsExecuted, jobAliveTimeFile, jobAliveTime);
-    storeData(jobsExecuted, executionTimeFile, executionTime);
+    storeData(jobsExecuted, jobAliveTimeFile,  argC->jobAliveTime);
+    storeData(jobsExecuted, executionTimeFile, argC->jobExecutionTime);
     storeData(jobsExecuted, inputDurationFile, inputDuration);
     
     if(periodSelection == 4){
@@ -254,7 +259,7 @@ for(int i = 0; i < con_threads; i++)
         storeData(runtime * (int)1e3 / period[2] - 1, periodDrift_3_File, periodDrift_3_mem);
     }else
     {
-        storeData(inputDuration - 1, totalDriftFile, totalDrift_mem);
+        storeData(runtime * (int)1e3 / period[periodSelection] - 1, totalDriftFile, totalDrift_mem);
     }
     
     
@@ -269,8 +274,8 @@ for(int i = 0; i < con_threads; i++)
     }
     else
         free(totalDrift_mem);
-    free(timer);
-
+    //free(timer);
+    
     
     // Deletes Queue.
     queueDelete(fifo);
@@ -343,7 +348,7 @@ void *producer (void *q)
     struct timeval jobStart, jobEnd, executionStart, executionEnd, temp;
     
     int drifting    = 0;
-    int driftCount  = -1;
+    int driftCount  = 0;
 
     for (i = 0; i < timer->tasksToExecute; i++)
     {
@@ -392,6 +397,7 @@ void *producer (void *q)
             pthread_mutex_lock(timer->timMut);
         
             int inputDuration = (jobEnd.tv_sec - jobStart.tv_sec)*1000000 + (jobEnd.tv_usec - jobStart.tv_usec);
+            
             
             timer->input[jobsAdded] = inputDuration;
             jobsAdded++;
@@ -447,6 +453,12 @@ void *consumer (void *q)
     while(argC->queue->empty)
     {
         pthread_cond_wait(argC->queue->notEmpty, argC->queue->mut);
+        
+        
+         if (flag) {
+                pthread_mutex_unlock(argC->queue->mut);
+                return NULL;
+            }
     }
     
 
