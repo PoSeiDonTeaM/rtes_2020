@@ -15,7 +15,7 @@
 
 // Timer Initialization
 
-void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, void *(*prod)(void *arg), int *input, int *timDrift, pthread_mutex_t *timMut){
+void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, int *input, int *timDrift, pthread_mutex_t *timMut){
     
     tim-> period            = period;         
     tim-> tasksToExecute    = tasksToExecute;
@@ -25,12 +25,10 @@ void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void
     tim-> timerFcn          = timerFcn;
     tim-> errorFcn          = errorFcn;
     tim-> userData          = NULL;
-
     
     tim-> input             = input;
     tim-> timDrift          = timDrift;
     tim-> queue             = queue;
-    tim-> prod              = prod;
     tim-> timMut            = timMut;
     
 }
@@ -41,7 +39,7 @@ void start(Timer *tim) {
     pthread_create(&tim->tid, NULL, tim->prod, tim);
 }
 
-// Starting timer at a specific date/time
+// Starting timer at a specific date/tim    e
 
 void startat(Timer *tim, int d, int m, int y, int h, int min, int sec)
 {

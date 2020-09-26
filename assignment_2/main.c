@@ -14,15 +14,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "timer.h"
 #include <sys/time.h>
 #include <math.h>
-#include <pthread.h>
 #include "queue.h"
 
 #define PI 3.141592654
 #define con_threads 3
+#define pro_threads 1
 
+#define q_Size 2
+#define p_Selection 1
+#define r_time 1000
 
 double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3}; 
 
@@ -31,11 +35,13 @@ int jobsExecuted;
 int lostJobs;
 int jobsAdded;
 
+
+
 // Parameter constructor
-int  totalJobsCalc(int runtime, int period[3], int periodSelection);
-void storeData(int N, FILE *file, int *data);
-void *producer(void *arg);
-void *consumer(void *arg);
+int  totalJobsCalc(int runtime, int* period, int periodSelection);
+//void storeData(int N, FILE *file, int *data);
+void *producer(void *args);
+void *consumer(void *args);
 void *work_execution(void *arg);
 void *stop(void *arg);
 void *error();
@@ -51,14 +57,14 @@ typedef struct {
 } ArgC;
 
 int main() {
-    
-    int queueSize       = 0;
-    int runtime         = 0;
-    int periodSelection = 0;
-    const int period[3] = {1000, 100, 10};
+    printf("1");
+    int queueSize       = q_Size;
+    int runtime         = r_time;
+    int periodSelection = p_Selection;
+    int period[3] = {1000, 100, 10};
     
     // Period selection
-    
+  /*(  
     do{
         printf("Select the desired period (in milliseconds). Your choices are:\n 1. Period of 1000 milliseconds. \n 2. Period of 100 milliseconds. \n 3. Period of 10 milliseconds. \n 4. Combine all the above periods together in one simulation.\n\n");
         scanf("%d", &periodSelection);
@@ -96,12 +102,14 @@ int main() {
         {
             printf("The size of queue shall be a positive value.\n\n");
         }
-    }while(queueSize <= 0);
+    }while(queueSize <= 0);*/
     
 
-// Calculate total jobs 
+// Calculate total jobs
+ 
 int totalJobs = totalJobsCalc(runtime, period, periodSelection);
 
+/*
 // Initialize files to store values
 FILE *executionTimeFile = fopen("executionTime.csv", "w");
     
@@ -119,7 +127,9 @@ FILE *executionTimeFile = fopen("executionTime.csv", "w");
     FILE *jobAliveTimeFile = fopen("jobAliveTime.csv", "w");
     
     FILE *inputDurationFile = fopen("inputDuration.csv", "w");
-
+*/
+    
+    
 for(int i = 0; i < con_threads; i++)
 {
     // Initialize parameters
@@ -127,6 +137,7 @@ for(int i = 0; i < con_threads; i++)
     int lostJobs        = 0;
     int jobsAdded       = 0;
 
+    
     // Initializes Queue.
     Queue *fifo;
     fifo = queueInit(queueSize);
@@ -161,13 +172,18 @@ for(int i = 0; i < con_threads; i++)
     argC->jobAliveTime      = jobAliveTime;
     argC->jobExecutionTime  = executionTime;
     argC->timMut            = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+    argC->queue             = fifo;
+    
     pthread_mutex_init(argC->timMut, NULL);
     
     pthread_t con[con_threads];
+    pthread_t pro[pro_threads];
     
     // Creating consumer threads
     for (int x=0; x<con_threads; x++)
-            pthread_create (&con[x], NULL, consumer, fifo);
+            pthread_create (&con[x], NULL, consumer, argC);
+    
+
     
     // TIMER CREATION STARTS HERE
     
@@ -178,30 +194,30 @@ for(int i = 0; i < con_threads; i++)
     
     if (periodSelection == 1) {
         timer = (Timer *)malloc(sizeof(Timer));
-        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop, work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 2) {
         timer = (Timer *)malloc(sizeof(Timer));
         timerInit(timer, period[1], runtime * (int)1e3 / period[1], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+                work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 3) {
         timer = (Timer *)malloc(sizeof(Timer));
         timerInit(timer, period[2], runtime * (int)1e3 / period[2], stop,
-                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
+                work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 4) {
         timer = (Timer *)malloc(3 * sizeof(Timer));
         timerInit(&timer[0], period[0], runtime * (int)1e3 / period[0],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
+                stop, work_execution, error, fifo, inputDuration, periodDrift_1_mem, timMut);
         timerInit(&timer[1], period[1], runtime * (int)1e3 / period[1],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_2_mem, timMut);
+                stop, work_execution, error, fifo, inputDuration, periodDrift_2_mem, timMut);
         timerInit(&timer[2], period[2], runtime * (int)1e3 / period[2],
-                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
+                stop, work_execution, error, fifo, inputDuration, periodDrift_1_mem, timMut);
+        
         start(&timer[0]);
         start(&timer[1]);
         start(&timer[2]);
@@ -218,6 +234,7 @@ for(int i = 0; i < con_threads; i++)
         pthread_join(timer->tid, NULL);
     
     
+    
     pthread_cond_broadcast(fifo->notEmpty);
     
     for (int x=0; x<con_threads; x++)
@@ -226,6 +243,7 @@ for(int i = 0; i < con_threads; i++)
     
     // Store data to file for later computations 
     
+    /*
     storeData(jobsExecuted, jobAliveTimeFile, jobAliveTime);
     storeData(jobsExecuted, executionTimeFile, executionTime);
     storeData(jobsExecuted, inputDurationFile, inputDuration);
@@ -252,21 +270,22 @@ for(int i = 0; i < con_threads; i++)
     else
         free(totalDrift_mem);
     free(timer);
-
+    */
+    
     // Deletes Queue.
     queueDelete(fifo);
 
     pthread_mutex_destroy (argC->timMut);
-    free(argC->timMut);
-    free(argC);
+    //free(argC->timMut);
+    //free(argC);
     pthread_mutex_destroy (timMut);
-    free(timMut);
+    //free(timMut);
 
     // Leaving some time for the system to rest, till next iteration.
     usleep(100000);
     
 }
-    
+    /*
     // Closes files.
     fclose(jobAliveTimeFile);
     fclose(inputDurationFile);
@@ -279,13 +298,14 @@ for(int i = 0; i < con_threads; i++)
     else
         fclose(totalDriftFile);
         
-
+    */
+    
     return 0;
 
 }
 
 
-int totalJobsCalc(int runtime, int period[3], int periodSelection)
+int totalJobsCalc(int runtime, int* period, int periodSelection)
 {
     
     int total = 0;
@@ -302,13 +322,13 @@ int totalJobsCalc(int runtime, int period[3], int periodSelection)
     return total;
 }
 
- 
+ /*
 void storeData(int N, FILE *file, int *data) {
     for (int i=0; i<N; i++)
         fprintf(file, "%d,", data[i]);
     fprintf(file, "\n");
 } 
-
+*/ 
 // TODO: Modify cons, work functions and integrate them to the current file.
 
 void *producer (void *q)
@@ -335,15 +355,15 @@ void *producer (void *q)
 
         gettimeofday(&jobStart, NULL);
         
-        double *x;
+        double *x = &angles[rand()%9];
 
-        x = &angles[rand()%9];
         
         // Creating a new workFunction Element on each iteration
         workFunction prod;
         prod.work = timer->timerFcn; 
         prod.arg  = (void *) x;  // Passing the address of x to arg with typecast void
 
+        
         // Locking mutex of queue to start adding elements.
         pthread_mutex_lock(timer->queue->mut);
         
@@ -424,12 +444,12 @@ void *consumer (void *q)
     pthread_mutex_lock (argC->queue->mut);
     
     // TODO: Check if needs a while, instead of an if statement only.
-    if(argC->queue->empty)
+    while(argC->queue->empty)
     {
         pthread_cond_wait(argC->queue->notEmpty, argC->queue->mut);
     }
     
-    
+
     queueDel(argC->queue, &result);
     gettimeofday(&jobAliveEnd, NULL);
     
@@ -446,11 +466,11 @@ void *consumer (void *q)
     // Task Execution ends
     
     // Freeing arguments
-    free(result.arg);
+    // free(result.arg);
     
     pthread_mutex_lock(argC->timMut);
     
-    
+    // TODO: Maybe add mutex between timestamps.
     // Calculating how long a task is alive (Creation -> Execution duration) 
     int jobAliveTime = (jobAliveEnd.tv_sec - result.stopwatch.tv_sec)*1000000 + jobAliveEnd.tv_usec - result.stopwatch.tv_usec;
     
