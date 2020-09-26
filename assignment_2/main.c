@@ -34,7 +34,7 @@ int inputDuration;
 int jobsExecuted;
 int lostJobs;
 int jobsAdded;
-
+int totalJobs = 0;
 
 
 // Parameter constructor
@@ -107,7 +107,7 @@ int main() {
 
 // Calculate total jobs
  
-int totalJobs = totalJobsCalc(runtime, period, periodSelection);
+totalJobs = totalJobsCalc(runtime, period, periodSelection);
 
 
 // Initialize files to store values
@@ -285,7 +285,7 @@ for(int i = 0; i < con_threads; i++)
     usleep(100000);
     
 }
-    /*
+    printf("hello");
     // Closes files.
     fclose(jobAliveTimeFile);
     fclose(inputDurationFile);
@@ -298,7 +298,7 @@ for(int i = 0; i < con_threads; i++)
     else
         fclose(totalDriftFile);
         
-    */
+
     
     return 0;
 
@@ -466,7 +466,7 @@ void *consumer (void *q)
     // Task Execution ends
     
     // Freeing arguments
-    // free(result.arg);
+    //free(result.arg);
     
     pthread_mutex_lock(argC->timMut);
     
@@ -483,6 +483,8 @@ void *consumer (void *q)
     
     jobsExecuted++;
     
+    if(jobsExecuted == totalJobs)
+        break;
 
     pthread_mutex_unlock(argC->timMut);
 
