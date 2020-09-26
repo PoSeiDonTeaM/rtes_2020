@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <queue>
+#include "queue.h"
 #include <math.h>
 #include <sys/time.h>
 #include <string.h>

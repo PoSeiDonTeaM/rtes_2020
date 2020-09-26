@@ -39,7 +39,7 @@ int jobsAdded;
 
 // Parameter constructor
 int  totalJobsCalc(int runtime, int* period, int periodSelection);
-//void storeData(int N, FILE *file, int *data);
+void storeData(int N, FILE *file, int *data);
 void *producer(void *args);
 void *consumer(void *args);
 void *work_execution(void *arg);
@@ -64,7 +64,7 @@ int main() {
     int period[3] = {1000, 100, 10};
     
     // Period selection
-  /*(  
+    
     do{
         printf("Select the desired period (in milliseconds). Your choices are:\n 1. Period of 1000 milliseconds. \n 2. Period of 100 milliseconds. \n 3. Period of 10 milliseconds. \n 4. Combine all the above periods together in one simulation.\n\n");
         scanf("%d", &periodSelection);
@@ -102,14 +102,14 @@ int main() {
         {
             printf("The size of queue shall be a positive value.\n\n");
         }
-    }while(queueSize <= 0);*/
+    }while(queueSize <= 0);
     
 
 // Calculate total jobs
  
 int totalJobs = totalJobsCalc(runtime, period, periodSelection);
 
-/*
+
 // Initialize files to store values
 FILE *executionTimeFile = fopen("executionTime.csv", "w");
     
@@ -127,7 +127,7 @@ FILE *executionTimeFile = fopen("executionTime.csv", "w");
     FILE *jobAliveTimeFile = fopen("jobAliveTime.csv", "w");
     
     FILE *inputDurationFile = fopen("inputDuration.csv", "w");
-*/
+
     
     
 for(int i = 0; i < con_threads; i++)
@@ -194,29 +194,29 @@ for(int i = 0; i < con_threads; i++)
     
     if (periodSelection == 1) {
         timer = (Timer *)malloc(sizeof(Timer));
-        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop, work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
+        timerInit(timer, period[0], runtime * (int)1e3 / period[0], stop, work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 2) {
         timer = (Timer *)malloc(sizeof(Timer));
         timerInit(timer, period[1], runtime * (int)1e3 / period[1], stop,
-                work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
+                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 3) {
         timer = (Timer *)malloc(sizeof(Timer));
         timerInit(timer, period[2], runtime * (int)1e3 / period[2], stop,
-                work_execution, error, fifo, inputDuration, totalDrift_mem, timMut);
+                work_execution, error, fifo, producer, inputDuration, totalDrift_mem, timMut);
         start(timer);
     }
     else if (periodSelection == 4) {
         timer = (Timer *)malloc(3 * sizeof(Timer));
         timerInit(&timer[0], period[0], runtime * (int)1e3 / period[0],
-                stop, work_execution, error, fifo, inputDuration, periodDrift_1_mem, timMut);
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
         timerInit(&timer[1], period[1], runtime * (int)1e3 / period[1],
-                stop, work_execution, error, fifo, inputDuration, periodDrift_2_mem, timMut);
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_2_mem, timMut);
         timerInit(&timer[2], period[2], runtime * (int)1e3 / period[2],
-                stop, work_execution, error, fifo, inputDuration, periodDrift_1_mem, timMut);
+                stop, work_execution, error, fifo, producer, inputDuration, periodDrift_1_mem, timMut);
         
         start(&timer[0]);
         start(&timer[1]);
@@ -243,7 +243,7 @@ for(int i = 0; i < con_threads; i++)
     
     // Store data to file for later computations 
     
-    /*
+    
     storeData(jobsExecuted, jobAliveTimeFile, jobAliveTime);
     storeData(jobsExecuted, executionTimeFile, executionTime);
     storeData(jobsExecuted, inputDurationFile, inputDuration);
@@ -270,7 +270,7 @@ for(int i = 0; i < con_threads; i++)
     else
         free(totalDrift_mem);
     free(timer);
-    */
+
     
     // Deletes Queue.
     queueDelete(fifo);
@@ -322,13 +322,13 @@ int totalJobsCalc(int runtime, int* period, int periodSelection)
     return total;
 }
 
- /*
+
 void storeData(int N, FILE *file, int *data) {
     for (int i=0; i<N; i++)
         fprintf(file, "%d,", data[i]);
     fprintf(file, "\n");
 } 
-*/ 
+
 // TODO: Modify cons, work functions and integrate them to the current file.
 
 void *producer (void *q)

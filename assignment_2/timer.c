@@ -15,7 +15,7 @@
 
 // Timer Initialization
 
-void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, int *input, int *timDrift, pthread_mutex_t *timMut){
+void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, void* (*prod)(void*), int *input, int *timDrift, pthread_mutex_t *timMut){
     
     tim-> period            = period;         
     tim-> tasksToExecute    = tasksToExecute;
@@ -25,7 +25,7 @@ void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void
     tim-> timerFcn          = timerFcn;
     tim-> errorFcn          = errorFcn;
     tim-> userData          = NULL;
-    
+    tim-> prod              = prod;
     tim-> input             = input;
     tim-> timDrift          = timDrift;
     tim-> queue             = queue;

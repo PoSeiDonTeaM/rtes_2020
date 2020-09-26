@@ -34,7 +34,7 @@ typedef struct {
     pthread_mutex_t *timMut;
 } Timer;
 
-void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, int *input, int *timDrift, pthread_mutex_t *timMut);
+void timerInit(Timer *tim, int period, int tasksToExecute, void *(*stopFcn)(void *arg), void *(*timerFcn)(void *arg), void *(*errorFcn)(), Queue *queue, void* (*prod)(void*), int *input, int *timDrift, pthread_mutex_t *timMut);
 
 void start(Timer *tim);
 
