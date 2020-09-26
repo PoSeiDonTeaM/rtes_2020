@@ -59,7 +59,7 @@ typedef struct {
 } ArgC;
 
 int main() {
-    printf("1");
+    
     int queueSize       = q_Size;
     int runtime         = r_time;
     int periodSelection = p_Selection;
@@ -134,10 +134,6 @@ FILE *executionTimeFile = fopen("executionTime.csv", "w");
     
 for(int i = 0; i < con_threads; i++)
 {
-    // Initialize parameters
-    int jobsExecuted    = 0;
-    int lostJobs        = 0;
-    int jobsAdded       = 0;
 
     
     // Initializes Queue.
@@ -186,7 +182,6 @@ for(int i = 0; i < con_threads; i++)
             pthread_create (&con[x], NULL, consumer, argC);
     
 
-    
     // TIMER CREATION STARTS HERE
     
     Timer *timer;
@@ -246,9 +241,7 @@ for(int i = 0; i < con_threads; i++)
             pthread_join (con[x], NULL);
     
     
-    // Store data to file for later computations 
-    
-    
+    // Store data to file for later computations
     storeData(jobsExecuted, jobAliveTimeFile,  argC->jobAliveTime);
     storeData(jobsExecuted, executionTimeFile, argC->jobExecutionTime);
     storeData(jobsExecuted, inputDurationFile, inputDuration);
@@ -329,8 +322,10 @@ int totalJobsCalc(int runtime, int* period, int periodSelection)
 
 
 void storeData(int N, FILE *file, int *data) {
+    
     for (int i=0; i<N; i++)
         fprintf(file, "%d,", data[i]);
+    
     fprintf(file, "\n");
 } 
 
