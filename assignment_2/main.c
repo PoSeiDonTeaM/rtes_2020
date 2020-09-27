@@ -26,7 +26,7 @@
 
 #define q_Size 2
 #define p_Selection 1
-#define r_time 60
+#define r_time 3600
 
 double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3}; 
 
@@ -54,7 +54,6 @@ typedef struct {
     int *jobAliveTime;
     int *jobsExecuted;
     int *jobExecutionTime;
-    int *flag;
     pthread_mutex_t *timMut;
 } ArgC;
 
