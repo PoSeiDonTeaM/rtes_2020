@@ -22,7 +22,7 @@ Let's note that the computer that the software was created does not support mult
 
 **5.** Now we need to send the cross-compiled executable to the rpi device. The most popular way to do this is to connect to the rpi using `SSH`, so use the respective, following commands:
  * `scp <executableName> <rpiName>@<rpiIP>:/location/to/be/saved`
- * `ssh 192.168.1.<IP assigned to RPI from router> -lroot
+ * `ssh 192.168.1.<IP assigned to RPI from router> -lroot`
  * Run the executable from the rpi using `./<executableName>`
  
  ## Lessons Learned
