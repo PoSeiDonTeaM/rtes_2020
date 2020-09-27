@@ -26,7 +26,7 @@
 
 #define q_Size 2
 #define p_Selection 1
-#define r_time 1000
+#define r_time 60
 
 double angles[10] = {PI/4, PI, PI/2, PI/6, PI/3, -PI, -PI/4, -PI/2, -PI/6, -PI/3}; 
 
@@ -64,47 +64,6 @@ int main() {
     int runtime         = r_time;
     int periodSelection = p_Selection;
     int period[3] = {1000, 100, 10};
-    
-    // Period selection
-    
-    do{
-        printf("Select the desired period (in milliseconds). Your choices are:\n 1. Period of 1000 milliseconds. \n 2. Period of 100 milliseconds. \n 3. Period of 10 milliseconds. \n 4. Combine all the above periods together in one simulation.\n\n");
-        scanf("%d", &periodSelection);
-        
-        // Error message
-        if(periodSelection > 4 || periodSelection < 1)
-        {
-            printf("The period you selected is invalid. Please select one of the choices above.\n");
-        }
-    }while(periodSelection > 4 || periodSelection < 1);
-        
-
-    // Runtime definition by user
-    
-    do{
-        printf("Please insert the desired runtime.\n");
-        scanf("%d", &runtime);
-        
-        // Error message
-        if(runtime <= 0)
-        {
-            printf("The runtime you selected seems to be smaller than expected. Consider using a runtime with a positive value.\n\n");
-        }
-    }while(runtime <= 0);
-    
-    
-    // Queue Size definition by user
-    
-    do{
-        printf("Please insert the queue size.\n");
-        scanf("%d", &queueSize);
-        
-        // Error message
-        if(queueSize <= 0)
-        {
-            printf("The size of queue shall be a positive value.\n\n");
-        }
-    }while(queueSize <= 0);
     
 
 // Calculate total jobs
@@ -256,7 +215,8 @@ for(int i = 0; i < con_threads; i++)
     }
     
     
-    //! Cleans up.
+    /*
+    ! Cleans up.
     free(jobAliveTime);
     free(inputDuration);
     free(executionTime);
@@ -268,7 +228,7 @@ for(int i = 0; i < con_threads; i++)
     else
         free(totalDrift_mem);
     //free(timer);
-    
+    */
     
     // Deletes Queue.
     queueDelete(fifo);
